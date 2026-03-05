@@ -18,7 +18,7 @@ This 8-minute talk covers the problem, the MCP protocol, and a live demo of imag
   <strong>Ahmed Al-Eryani</strong>
 </p>
 
-### Connect
+### Connect on LinkedIn
 
 <a href="https://www.linkedin.com/in/ahmed-aleryani"><img src="assets/qr-linkedin.png" width="140" alt="LinkedIn QR"></a>
 
