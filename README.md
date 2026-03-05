@@ -10,6 +10,24 @@ Claude Code is powerful at reasoning and shipping code — but it's completely b
 
 This 8-minute talk covers the problem, the MCP protocol, and a live demo of image generation, editing, panoramic rendering, and AI-powered image analysis — all from the terminal.
 
+## Speaker
+
+<p align="center">
+  <img src="assets/ahmed.png" width="120" style="border-radius:50%;" alt="Ahmed Al-Eryani">
+</p>
+
+<p align="center"><strong>Ahmed Al-Eryani</strong></p>
+
+<p align="center">
+  <a href="https://www.linkedin.com/in/ahmed-aleryani"><img src="assets/qr-linkedin.png" width="140" alt="LinkedIn QR"></a>
+  &nbsp;&nbsp;&nbsp;
+  <a href="https://pypi.org/project/pixelforge-mcp/"><img src="assets/qr-pypi.png" width="140" alt="PyPI QR"></a>
+</p>
+
+<p align="center">
+  <a href="https://www.linkedin.com/in/ahmed-aleryani">LinkedIn</a> · <a href="https://pypi.org/project/pixelforge-mcp/">PyPI</a>
+</p>
+
 ## Event Details
 
 - **Event:** Vibe Code Atelier #4 — Demo Day
