@@ -1,0 +1,1240 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width,initial-scale=1">
+<title>PixelForge MCP — Vibe Code Atelier #4</title>
+<link rel="preconnect" href="https://fonts.googleapis.com">
+<link href="https://fonts.googleapis.com/css2?family=Syne:wght@400;600;700;800&family=IBM+Plex+Mono:wght@400;500;600&family=Press+Start+2P&display=swap" rel="stylesheet">
+<style>
+*,*::before,*::after{margin:0;padding:0;box-sizing:border-box}
+:root{
+  --bg:#0a0e14;--bg2:#101820;--fg:#e6edf3;--fg2:#8b949e;
+  --accent:#00E5E0;--accent-dim:#00E5E040;--accent-glow:#00E5E015;
+  --magenta:#C71585;--pink:#FF1493;--neon-blue:#1E90FF;
+  --green:#00FF80;--violet:#EE82EE;
+  --forge-orange:#f97316;--forge-orange-dim:#f9731640;
+  --gold:#FFD700;
+  --font-display:'Syne',system-ui,sans-serif;
+  --font-mono:'IBM Plex Mono','SF Mono',monospace;
+  --font-pixel:'Press Start 2P',monospace;
+  --border:#1a2535;
+  --slide-transition:0.5s cubic-bezier(0.22,1,0.36,1);
+}
+html,body{height:100%;overflow:hidden;background:var(--bg);color:var(--fg);font-family:var(--font-mono);cursor:url('assets/cursor-hammer.png') 4 4, auto;-webkit-user-select:none;user-select:none}
+body{position:relative}
+a,button,.pain-card,.client-badge,.mcp-client,.nav-arrow,.counter,[onclick]{cursor:url('assets/cursor-hammer-pointer.png') 4 4, pointer}
+.cursor-hidden,.cursor-hidden *{cursor:none !important}
+.hammer-cursor{position:fixed;width:32px;height:32px;pointer-events:none;z-index:9999;background:url('assets/cursor-hammer.png') center/contain no-repeat;display:none;transform-origin:bottom left}
+.hammer-cursor.striking{display:block;animation:hammerStrike 0.25s ease-out forwards}
+@keyframes hammerStrike{0%{transform:rotate(0deg) scale(1)}40%{transform:rotate(-35deg) scale(1.15)}100%{transform:rotate(15deg) scale(0.95)}}
+
+#pixel-canvas{position:fixed;inset:0;z-index:0;pointer-events:none}
+
+/* CRT scanline overlay — subtle retro touch */
+body::before{
+  content:'';position:fixed;inset:0;z-index:999;pointer-events:none;
+  background:repeating-linear-gradient(0deg,transparent,transparent 3px,rgba(0,0,0,0.06) 3px,rgba(0,0,0,0.06) 4px);
+}
+/* Vignette */
+body::after{
+  content:'';position:fixed;inset:0;z-index:998;pointer-events:none;
+  background:radial-gradient(ellipse at center,transparent 60%,rgba(0,0,0,0.35) 100%);
+}
+
+.deck{position:relative;width:100vw;height:100vh;z-index:1}
+.slide{
+  position:absolute;inset:0;
+  display:flex;flex-direction:column;align-items:center;justify-content:center;
+  padding:6vh 8vw;
+  opacity:0;transform:translateX(40px);
+  transition:opacity var(--slide-transition),transform var(--slide-transition);
+  pointer-events:none;
+}
+.slide.active{opacity:1;transform:translateX(0);pointer-events:auto}
+.slide.prev{opacity:0;transform:translateX(-40px)}
+
+/* Staggered entrances */
+.slide.active .stagger-1{animation:fadeSlideUp 0.6s ease both 0.1s}
+.slide.active .stagger-2{animation:fadeSlideUp 0.6s ease both 0.25s}
+.slide.active .stagger-3{animation:fadeSlideUp 0.6s ease both 0.4s}
+.slide.active .stagger-4{animation:fadeSlideUp 0.6s ease both 0.55s}
+.slide.active .stagger-5{animation:fadeSlideUp 0.6s ease both 0.7s}
+@keyframes fadeSlideUp{from{opacity:0;transform:translateY(25px)}to{opacity:1;transform:translateY(0)}}
+.slide.active .stagger-left{animation:fadeSlideLeft 0.6s ease both 0.3s}
+.slide.active .stagger-right{animation:fadeSlideRight 0.6s ease both 0.3s}
+@keyframes fadeSlideLeft{from{opacity:0;transform:translateX(-30px)}to{opacity:1;transform:translateX(0)}}
+@keyframes fadeSlideRight{from{opacity:0;transform:translateX(30px)}to{opacity:1;transform:translateX(0)}}
+
+/* Glow animations */
+@keyframes glowPulse{
+  0%,100%{box-shadow:0 0 15px var(--accent-dim),0 0 30px #00E5E010}
+  50%{box-shadow:0 0 25px var(--accent-dim),0 0 50px #00E5E018,0 0 80px #C7158508}
+}
+@keyframes textGlowPulse{
+  0%,100%{text-shadow:0 0 20px var(--accent-dim)}
+  50%{text-shadow:0 0 35px var(--accent-dim),0 0 60px #C7158515}
+}
+
+/* Typography — Syne for headings, varied colors */
+h1{font-family:var(--font-display);font-weight:800;font-size:clamp(2.5rem,6vw,5.5rem);line-height:1.4;letter-spacing:-0.02em;overflow:visible;padding:0.1em 0;color:#e6edf3}
+h2{font-family:var(--font-display);font-weight:700;font-size:clamp(1.8rem,4vw,3.5rem);line-height:1.4;letter-spacing:-0.01em;color:#c9d1d9;padding:0.05em 0;overflow:visible}
+h3{font-family:var(--font-display);font-weight:600;font-size:clamp(1.2rem,2.5vw,2rem);line-height:1.4;color:#b0bac5;overflow:visible}
+p,.body{font-size:clamp(0.9rem,1.5vw,1.25rem);line-height:1.7;color:var(--fg2)}
+code{
+  font-family:var(--font-mono);background:var(--bg2);
+  padding:0.15em 0.5em;border-radius:4px;font-size:0.9em;
+  border:1px solid var(--border);color:var(--accent);
+}
+
+/* Pixel-styled labels — retro accent */
+.pixel-label{
+  font-family:var(--font-pixel);font-size:0.55rem;letter-spacing:0.05em;
+  text-transform:uppercase;color:var(--accent);line-height:2;
+}
+
+.accent{color:var(--accent)}
+.accent-glow{color:var(--accent);animation:textGlowPulse 3s ease-in-out infinite}
+.accent-magenta{color:var(--magenta)}
+.accent-pink{color:var(--pink)}
+.dim{color:var(--fg2)}
+.tag{
+  display:inline-block;padding:0.3em 0.9em;border-radius:2px;
+  font-family:var(--font-pixel);font-size:0.5rem;letter-spacing:0.08em;
+  text-transform:uppercase;line-height:2;
+  border:2px solid var(--accent);color:var(--accent);background:var(--accent-glow);
+  animation:glowPulse 3s ease-in-out infinite;
+  image-rendering:pixelated;
+}
+
+/* Counter + HP-bar progress */
+.counter{
+  position:fixed;bottom:2.5vh;right:3vw;z-index:10;
+  font-family:var(--font-pixel);font-size:0.55rem;color:var(--fg2);opacity:0.6;
+}
+.progress{
+  position:fixed;top:0;left:0;height:4px;z-index:10;
+  background:linear-gradient(90deg,var(--accent),var(--pink),var(--neon-blue));
+  background-size:200% 100%;animation:progressShimmer 3s ease infinite;
+  transition:width 0.4s ease;
+  box-shadow:0 0 12px var(--accent-dim);
+}
+.progress::after{
+  content:'';position:absolute;inset:0;
+  background:repeating-linear-gradient(90deg,transparent,transparent 10px,rgba(0,0,0,0.25) 10px,rgba(0,0,0,0.25) 12px);
+}
+@keyframes progressShimmer{0%{background-position:0% 50%}50%{background-position:100% 50%}100%{background-position:0% 50%}}
+
+/* ============ SLIDE 1 ============ */
+.s1-layout{text-align:center;max-width:1000px;width:100%;position:relative}
+.s1-top{display:flex;align-items:center;justify-content:center;gap:3rem;margin-bottom:3.5vh}
+.s1-hero-wrap{position:relative;display:inline-block}
+#hero-particles{position:fixed;inset:0;width:100vw;height:100vh;pointer-events:none;z-index:0}
+.s1-top .hero-img{
+  width:min(260px,24vw);height:auto;border-radius:6px;
+  border:2px solid var(--accent-dim);position:relative;z-index:1;
+  filter:drop-shadow(0 0 30px var(--accent-dim)) drop-shadow(0 0 60px #C7158515);
+  animation:float 4s ease-in-out infinite, heroGlow 4s ease-in-out infinite alternate;
+}
+@keyframes float{0%,100%{transform:translateY(0)}50%{transform:translateY(-8px)}}
+@keyframes heroGlow{
+  0%{filter:drop-shadow(0 0 30px var(--accent-dim)) drop-shadow(0 0 60px #C7158515)}
+  100%{filter:drop-shadow(0 0 45px #00E5E050) drop-shadow(0 0 80px #C7158525) drop-shadow(0 0 100px #1E90FF15)}
+}
+.s1-layout h1{margin-bottom:1.5vh;font-family:var(--font-pixel);font-weight:400;font-size:clamp(1.6rem,3.5vw,2.8rem);letter-spacing:0.02em;line-height:2;padding:0.1em 0;overflow:visible}
+.s1-layout h1 .accent-glow{color:var(--accent);animation:textGlowPulse 3s ease-in-out infinite}
+.s1-layout .tagline{font-size:clamp(1rem,1.8vw,1.3rem);color:var(--fg2);margin-bottom:3.5vh}
+.s1-presenter{
+  display:flex;align-items:center;justify-content:center;gap:2.5rem;margin-bottom:2vh;
+}
+.s1-presenter .avatar{
+  width:170px;height:170px;border-radius:4px;object-fit:cover;
+  border:3px solid var(--accent);
+  box-shadow:0 0 20px var(--accent-dim),0 0 40px #C7158510;
+  animation:glowPulse 3s ease-in-out infinite;
+  image-rendering:auto;flex-shrink:0;
+}
+.s1-presenter-info{
+  display:flex;flex-direction:column;align-items:flex-start;gap:0.8rem;
+}
+.s1-presenter .name{font-family:var(--font-display);font-weight:600;font-size:1.15rem;color:#c9d1d9}
+.s1-presenter-info canvas{border-radius:6px;border:1px solid var(--border)}
+.s1-presenter-info a{color:var(--fg2);font-size:0.7rem;text-decoration:none;transition:color 0.3s}
+.s1-presenter-info a:hover{color:var(--accent)}
+.s1-meta{display:flex;gap:1.5rem;justify-content:center;align-items:center;flex-wrap:wrap}
+.s1-meta span{font-size:0.85rem;color:var(--fg2)}
+
+/* ============ SLIDE 2 ============ */
+.s2-layout{max-width:1000px;text-align:center}
+.s2-layout h2{margin-bottom:5vh}
+.pain-grid{display:grid;grid-template-columns:repeat(3,1fr);gap:2.5rem;width:100%}
+.pain-card{
+  background:var(--bg2);border:2px solid var(--border);border-radius:4px;
+  padding:2.5rem 2rem;text-align:center;
+  transition:border-color 0.4s,transform 0.4s,box-shadow 0.4s;
+  position:relative;overflow:hidden;
+}
+.pain-card::before{
+  content:'';position:absolute;inset:0;
+  background:radial-gradient(circle at 50% 0%,#00E5E008,transparent 70%);
+  opacity:0;transition:opacity 0.4s;
+}
+.pain-card:hover{border-color:var(--accent);transform:translateY(-6px);box-shadow:0 8px 30px #00E5E015}
+.pain-card:hover::before{opacity:1}
+.pain-icon{font-size:2.5rem;margin-bottom:1rem;display:block;animation:iconBounce 2s ease-in-out infinite}
+.pain-icon-img{width:64px;height:64px;object-fit:contain;margin-bottom:1rem;display:block;margin-inline:auto;image-rendering:pixelated;filter:drop-shadow(0 0 8px var(--accent-dim));animation:iconBounce 2s ease-in-out infinite}
+@keyframes iconBounce{0%,100%{transform:translateY(0)}50%{transform:translateY(-5px)}}
+.pain-card h3{margin-bottom:0.75rem;font-size:1.1rem;color:#c9d1d9;line-height:1.4}
+.pain-card p{font-size:0.85rem;color:var(--fg2);line-height:1.7}
+
+/* ============ SLIDE 3 ============ */
+.s3-layout{max-width:1000px;text-align:center}
+.s3-layout h2{margin-bottom:1.5vh}
+.s3-layout .subtitle{margin-bottom:4vh;font-size:clamp(1rem,1.8vw,1.3rem);color:var(--fg2)}
+.mcp-flow{
+  display:flex;align-items:center;justify-content:center;gap:1.5rem;
+  margin-bottom:3.5vh;flex-wrap:nowrap;
+}
+.mcp-clients{display:flex;flex-direction:column;gap:0.4rem}
+.mcp-client{
+  font-family:var(--font-mono);font-size:clamp(0.7rem,1.1vw,0.9rem);
+  padding:0.4rem 1rem;background:var(--bg2);border:1px solid var(--border);
+  border-radius:2px;color:var(--accent);font-weight:500;
+  text-align:right;transition:all 0.3s;white-space:nowrap;
+}
+.mcp-client:hover{border-color:var(--accent);box-shadow:0 0 12px var(--accent-glow)}
+.mcp-arrow{
+  font-family:var(--font-mono);font-size:1.5rem;color:#3a4a5e;
+  display:flex;align-items:center;flex-shrink:0;
+}
+.mcp-hub{
+  font-family:var(--font-mono);font-size:clamp(0.85rem,1.3vw,1.1rem);
+  padding:1.2rem 2rem;background:var(--accent-glow);
+  border:2px solid var(--accent);border-radius:4px;
+  color:var(--accent);font-weight:600;white-space:nowrap;
+  position:relative;overflow:hidden;
+  box-shadow:0 0 20px var(--accent-dim);
+}
+.mcp-hub::after{
+  content:'';position:absolute;top:0;left:-100%;width:50%;height:100%;
+  background:linear-gradient(90deg,transparent,#00E5E012,transparent);
+  animation:diagramSweep 4s ease-in-out infinite;
+}
+@keyframes diagramSweep{0%{left:-50%}100%{left:150%}}
+.mcp-tools{
+  font-family:var(--font-mono);font-size:clamp(0.85rem,1.3vw,1.1rem);
+  padding:1.2rem 2rem;background:#C7158512;
+  border:2px solid var(--magenta);border-radius:4px;
+  color:var(--pink);font-weight:600;white-space:nowrap;
+  box-shadow:0 0 20px #C7158518;
+}
+.clients-grid{display:flex;gap:1rem;justify-content:center;flex-wrap:wrap}
+.client-badge{
+  padding:0.4em 1em;border-radius:2px;font-size:0.8rem;
+  background:var(--bg2);border:1px solid var(--border);color:var(--fg2);
+  transition:all 0.3s;
+}
+.client-badge:hover{border-color:var(--accent);color:var(--accent);box-shadow:0 0 15px var(--accent-glow)}
+
+/* ============ SLIDE 4 ============ */
+.s4-layout{max-width:1100px;width:100%}
+.s4-layout h2{text-align:center;margin-bottom:4vh}
+.s4-columns{display:grid;grid-template-columns:1fr 1fr;gap:3rem;align-items:start}
+.tools-list{list-style:none}
+.tools-list li{
+  padding:0.6rem 0;font-size:clamp(0.85rem,1.3vw,1.05rem);line-height:1.5;
+  border-bottom:1px solid var(--border);display:flex;align-items:center;gap:0.75rem;
+  transition:all 0.3s;
+}
+.tools-list li:hover{padding-left:0.5rem;border-bottom-color:var(--accent)}
+.tools-list li:last-child{border:none}
+.tool-name{color:var(--accent);font-weight:600;min-width:140px}
+.tool-desc{color:var(--fg2)}
+.model-table{width:100%}
+.model-table table{
+  width:100%;border-collapse:collapse;font-size:0.85rem;
+  background:var(--bg2);border-radius:4px;overflow:hidden;
+  border:1px solid var(--border);
+}
+.model-table th{
+  text-align:left;padding:0.75rem 1rem;
+  background:#131d2a;color:var(--fg2);font-weight:600;font-size:0.75rem;
+  text-transform:uppercase;letter-spacing:0.06em;
+}
+.model-table td{padding:0.65rem 1rem;border-bottom:1px solid var(--border);color:#b0bac5;transition:all 0.3s}
+.model-table tr:hover td{background:#15202e}
+.model-table tr:last-child td{border:none}
+.model-table .model-name{color:var(--accent);font-weight:500}
+.install-cmd{
+  margin-top:2.5rem;text-align:center;
+  font-size:clamp(1rem,1.8vw,1.3rem);
+  padding:1rem 2rem;background:var(--bg2);border:2px solid var(--border);
+  border-radius:4px;animation:glowPulse 4s ease-in-out infinite;
+}
+
+/* ============ SLIDE 5 — FULL RETRO (Press Start 2P + Claude Code terminal) ============ */
+.s5-layout{text-align:center;position:relative;z-index:2}
+.s5-layout h2{
+  font-family:var(--font-pixel);
+  font-size:clamp(1.2rem,3vw,2.2rem);margin-bottom:2.5vh;
+  color:var(--forge-orange);line-height:2;padding:0.1em 0;overflow:visible;
+  text-shadow:0 0 20px var(--forge-orange-dim),0 0 40px #f9731615;
+}
+.s5-terminal{
+  background:#12121f;border:3px solid #2a2a4a;
+  padding:2.5rem 3rem;max-width:650px;width:90%;
+  box-shadow:0 0 30px rgba(217,119,6,0.08),0 16px 48px rgba(0,0,0,0.4);
+  position:relative;
+  /* Pixel-notched corners */
+  clip-path:polygon(
+    0 6px,6px 6px,6px 0,
+    calc(100% - 6px) 0,calc(100% - 6px) 6px,100% 6px,
+    100% calc(100% - 6px),calc(100% - 6px) calc(100% - 6px),calc(100% - 6px) 100%,
+    6px 100%,6px calc(100% - 6px),0 calc(100% - 6px)
+  );
+}
+.s5-terminal-bar{
+  position:absolute;top:6px;left:6px;right:6px;height:28px;
+  background:#0a0a16;border-bottom:2px solid #2a2a4a;
+  display:flex;align-items:center;padding:0 10px;gap:6px;
+}
+.s5-terminal-dot{width:8px;height:8px}
+.s5-terminal-dot:nth-child(1){background:#FF4444}
+.s5-terminal-dot:nth-child(2){background:#FFD700}
+.s5-terminal-dot:nth-child(3){background:#39FF14}
+.s5-terminal-title{
+  flex:1;text-align:center;font-family:var(--font-pixel);
+  font-size:0.4rem;color:#6a6a8a;letter-spacing:0.05em;line-height:2;
+}
+.s5-layout .terminal-line{
+  font-family:var(--font-pixel);font-size:clamp(0.7rem,1.5vw,1rem);
+  color:#b0b0d0;margin-top:1.5rem;line-height:2;
+}
+.s5-layout .terminal-line .prompt{color:#d97706;font-weight:600}
+.s5-layout .terminal-line .cmd{color:#e8c9a0}
+.s5-layout .terminal-line .cursor{
+  display:inline-block;width:0.6em;height:1em;
+  background:#d97706;vertical-align:text-bottom;
+  animation:blink 1s step-end infinite;margin-left:4px;
+}
+@keyframes blink{50%{opacity:0}}
+.forge-sparks{position:absolute;inset:0;pointer-events:none;overflow:hidden}
+.spark{
+  position:absolute;width:4px;height:4px;border-radius:0;opacity:0;
+  animation:sparkAnim 2s ease-out infinite;
+}
+@keyframes sparkAnim{
+  0%{opacity:1;transform:translate(0,0) scale(1)}
+  50%{opacity:0.8}
+  100%{opacity:0;transform:translate(var(--dx),var(--dy)) scale(0)}
+}
+
+/* ============ SLIDE 6 ============ */
+.s6-layout{text-align:center;max-width:900px}
+.s6-layout h2{margin-bottom:1vh}
+.game-over{
+  font-family:var(--font-pixel)!important;font-size:clamp(1.6rem,4vw,3.2rem)!important;
+  font-style:italic;
+  color:var(--forge-orange)!important;letter-spacing:0.08em;line-height:2;
+  text-transform:uppercase;margin-bottom:2vh;
+  text-shadow:0 0 20px var(--forge-orange-dim),0 0 50px #f9731620,0 0 80px #f9731610;
+  animation:gameOverBlink 1.5s step-end infinite;
+}
+@keyframes gameOverBlink{0%,70%{opacity:1}35%,55%{opacity:0.2}}
+.s6-layout .closing{font-size:clamp(1rem,1.8vw,1.3rem);color:var(--fg2);margin-bottom:2vh}
+.s6-qr-row{display:flex;gap:3rem;justify-content:center;align-items:flex-start;margin:2vh auto}
+.s6-qr-item{display:flex;flex-direction:column;align-items:center;gap:0.6rem;transition:transform 0.3s}
+.s6-qr-item:hover{transform:scale(1.05)}
+.s6-qr-item canvas{border-radius:6px;border:1px solid var(--border)}
+.s6-qr-item .qr-label{
+  font-family:var(--font-mono);font-weight:600;font-size:0.8rem;
+  color:var(--accent);text-transform:uppercase;letter-spacing:0.06em;line-height:1.5;
+}
+.s6-qr-item a{color:var(--fg2);font-size:0.8rem;text-decoration:none;border-bottom:1px solid var(--border);transition:all 0.3s}
+.s6-qr-item a:hover{color:var(--accent);border-color:var(--accent)}
+.s6-install{
+  margin-top:2vh;padding:0.8rem 2rem;
+  background:var(--bg2);border:2px solid var(--accent);border-radius:4px;
+  font-size:clamp(0.9rem,1.5vw,1.15rem);display:inline-block;
+  animation:glowPulse 3s ease-in-out infinite;
+}
+.s6-social{margin-top:1.5vh;display:flex;gap:2rem;justify-content:center;color:var(--fg2);font-size:0.85rem}
+
+/* ============ START SCREEN ============ */
+.start-screen{
+  position:fixed;inset:0;z-index:100;
+  background:#0a0a14;
+  display:flex;flex-direction:column;align-items:center;justify-content:center;
+  cursor:pointer;transition:opacity 0.6s;
+}
+.start-screen.hidden{opacity:0;pointer-events:none}
+.start-screen h1{
+  font-family:var(--font-pixel);font-size:clamp(1.4rem,3.5vw,2.6rem);
+  color:var(--accent);text-align:center;line-height:2.2;
+  text-shadow:0 0 20px var(--accent-dim),0 0 60px #00E5E018;
+  margin-bottom:3rem;
+}
+.start-screen .start-subtitle{
+  font-family:var(--font-pixel);font-size:clamp(0.45rem,1vw,0.65rem);
+  color:var(--fg2);line-height:2;letter-spacing:0.1em;text-transform:uppercase;
+  margin-bottom:4rem;
+}
+.start-btn{
+  font-family:var(--font-pixel);font-size:clamp(0.6rem,1.2vw,0.85rem);
+  color:var(--forge-orange);background:none;border:3px solid var(--forge-orange);
+  padding:1rem 2.5rem;cursor:pointer;line-height:2;
+  text-transform:uppercase;letter-spacing:0.1em;
+  animation:startBlink 1.2s step-end infinite;
+  clip-path:polygon(
+    0 4px,4px 4px,4px 0,
+    calc(100% - 4px) 0,calc(100% - 4px) 4px,100% 4px,
+    100% calc(100% - 4px),calc(100% - 4px) calc(100% - 4px),calc(100% - 4px) 100%,
+    4px 100%,4px calc(100% - 4px),0 calc(100% - 4px)
+  );
+  transition:all 0.2s;
+}
+.start-btn:hover{
+  background:var(--forge-orange);color:#0a0a14;
+  box-shadow:0 0 30px var(--forge-orange-dim),0 0 60px #f9731620;
+}
+@keyframes startBlink{0%,80%{opacity:1}40%,60%{opacity:0.3}}
+.start-screen .pixel-art{
+  margin-bottom:2rem;display:flex;gap:3px;align-items:flex-end;
+}
+.start-screen .pixel-bar{
+  width:8px;background:var(--accent);
+  animation:pixelBounce 1.5s ease-in-out infinite;
+}
+.start-screen .pixel-bar:nth-child(1){height:20px;animation-delay:0s}
+.start-screen .pixel-bar:nth-child(2){height:35px;animation-delay:0.15s}
+.start-screen .pixel-bar:nth-child(3){height:50px;animation-delay:0.3s}
+.start-screen .pixel-bar:nth-child(4){height:40px;animation-delay:0.45s}
+.start-screen .pixel-bar:nth-child(5){height:25px;animation-delay:0.6s}
+.start-screen .pixel-bar:nth-child(6){height:45px;animation-delay:0.75s}
+.start-screen .pixel-bar:nth-child(7){height:30px;animation-delay:0.9s}
+@keyframes pixelBounce{0%,100%{transform:scaleY(1)}50%{transform:scaleY(0.4)}}
+
+/* ============ LOADING SCREEN ============ */
+.loading-screen{
+  position:fixed;inset:0;z-index:100;
+  background:#0a0a14;
+  display:none;flex-direction:column;align-items:center;justify-content:center;
+}
+.loading-screen.active{display:flex}
+.loading-screen.hidden{opacity:0;pointer-events:none;transition:opacity 0.8s}
+.loading-text{
+  font-family:var(--font-pixel);font-size:clamp(0.55rem,1.1vw,0.75rem);
+  color:var(--accent);line-height:2;margin-bottom:2rem;letter-spacing:0.08em;
+}
+.loading-bar-container{
+  width:min(400px,70vw);height:28px;border:3px solid var(--accent);
+  position:relative;overflow:hidden;
+  clip-path:polygon(
+    0 3px,3px 3px,3px 0,
+    calc(100% - 3px) 0,calc(100% - 3px) 3px,100% 3px,
+    100% calc(100% - 3px),calc(100% - 3px) calc(100% - 3px),calc(100% - 3px) 100%,
+    3px 100%,3px calc(100% - 3px),0 calc(100% - 3px)
+  );
+}
+.loading-bar-fill{
+  height:100%;width:0%;
+  background:linear-gradient(90deg,var(--accent),var(--pink),var(--forge-orange));
+  transition:width 0.15s steps(20);
+  position:relative;
+}
+.loading-bar-fill::after{
+  content:'';position:absolute;inset:0;
+  background:repeating-linear-gradient(90deg,transparent,transparent 8px,rgba(0,0,0,0.3) 8px,rgba(0,0,0,0.3) 10px);
+}
+.loading-percent{
+  font-family:var(--font-pixel);font-size:clamp(0.5rem,1vw,0.7rem);
+  color:var(--fg2);margin-top:1.2rem;line-height:2;
+}
+.loading-items{
+  font-family:var(--font-pixel);font-size:clamp(0.35rem,0.7vw,0.5rem);
+  color:#4a6a7a;margin-top:1.5rem;line-height:2.5;text-align:center;
+  min-height:4em;
+}
+
+/* ============ Controls ============ */
+.controls{
+  position:fixed;bottom:2vh;left:50%;transform:translateX(-50%);z-index:20;
+  display:flex;gap:0.5rem;align-items:center;
+  background:var(--bg2);border:2px solid var(--border);border-radius:4px;
+  padding:0.4rem 0.6rem;opacity:0.35;transition:opacity 0.3s;
+}
+.controls:hover{opacity:1}
+.controls button{
+  background:none;border:1px solid var(--border);border-radius:2px;
+  color:var(--fg2);cursor:pointer;padding:0.35rem 0.6rem;
+  font-family:var(--font-mono);font-size:0.75rem;
+  transition:all 0.2s;display:flex;align-items:center;gap:0.3rem;
+}
+.controls button:hover{border-color:var(--accent);color:var(--accent);background:var(--accent-glow)}
+.controls button svg{width:14px;height:14px;fill:currentColor}
+
+@media(max-width:768px){
+  .pain-grid{grid-template-columns:1fr}
+  .s4-columns{grid-template-columns:1fr}
+  .clients-grid{gap:0.5rem}
+}
+</style>
+</head>
+<body>
+
+<audio id="bgm" loop preload="auto"><source src="assets/arcade-theme.mp3" type="audio/mpeg"></audio>
+
+<!-- START SCREEN -->
+<div class="start-screen" id="startScreen" onclick="beginPresentation()">
+  <div class="pixel-art">
+    <div class="pixel-bar"></div><div class="pixel-bar"></div><div class="pixel-bar"></div>
+    <div class="pixel-bar"></div><div class="pixel-bar"></div><div class="pixel-bar"></div>
+    <div class="pixel-bar"></div>
+  </div>
+  <h1>PIXELFORGE<br>MCP</h1>
+  <p class="start-subtitle">Vibe Code Atelier #4 &middot; LIFT99 Tallinn</p>
+  <button class="start-btn">&#9654; Press Start</button>
+</div>
+
+<!-- LOADING SCREEN -->
+<div class="loading-screen" id="loadingScreen">
+  <div class="loading-text">LOADING PRESENTATION...</div>
+  <div class="loading-bar-container">
+    <div class="loading-bar-fill" id="loadingFill"></div>
+  </div>
+  <div class="loading-percent" id="loadingPercent">0%</div>
+  <div class="loading-items" id="loadingItems"></div>
+</div>
+
+<canvas id="pixel-canvas"></canvas>
+<div class="progress" id="progress"></div>
+<div class="counter" id="counter"></div>
+
+<!-- Controls -->
+<div class="controls" id="controls">
+  <button onclick="goTo(current-1)" title="Previous (←)">
+    <svg viewBox="0 0 24 24"><path d="M15.41 7.41L14 6l-6 6 6 6 1.41-1.41L10.83 12z"/></svg>
+  </button>
+  <button onclick="goTo(current+1)" title="Next (→)">
+    <svg viewBox="0 0 24 24"><path d="M10 6L8.59 7.41 13.17 12l-4.58 4.59L10 18l6-6z"/></svg>
+  </button>
+  <button onclick="toggleFullscreen()" title="Fullscreen (F)">
+    <svg viewBox="0 0 24 24"><path d="M7 14H5v5h5v-2H7v-3zm-2-4h2V7h3V5H5v5zm12 7h-3v2h5v-5h-2v3zM14 5v2h3v3h2V5h-5z"/></svg>
+    <span>Fullscreen</span>
+  </button>
+  <button id="musicBtn" onclick="toggleMusic()" title="Music (M)">
+    <svg id="musicOn" viewBox="0 0 24 24"><path d="M12 3v10.55c-.59-.34-1.27-.55-2-.55C7.79 13 6 14.79 6 17s1.79 4 4 4 4-1.79 4-4V7h4V3h-6z"/></svg>
+    <svg id="musicOff" viewBox="0 0 24 24" style="display:none"><path d="M4.27 3L3 4.27l9 9v.28c-.59-.34-1.27-.55-2-.55C7.79 13 6 14.79 6 17s1.79 4 4 4 4-1.79 4-4v-1.73l4.73 4.73L20 18.73 4.27 3zM14 7h4V3h-6v5.18l2 2V7z"/></svg>
+    <span id="musicLabel">Music</span>
+  </button>
+</div>
+
+<div class="deck" id="deck">
+
+  <!-- SLIDE 1 — Title -->
+  <div class="slide active" data-slide="1">
+    <canvas id="hero-particles"></canvas>
+    <div class="s1-layout">
+      <div class="s1-top stagger-1">
+        <div class="s1-hero-wrap">
+          <img src="assets/hero.png" alt="PixelForge" class="hero-img">
+        </div>
+      </div>
+      <h1 class="stagger-2"><span class="accent-glow">PIXELFORGE</span> MCP</h1>
+      <p class="tagline stagger-3">AI-powered image generation, editing &amp; analysis — via MCP</p>
+      <div class="s1-presenter stagger-4">
+        <img src="assets/ahmed.png" alt="Ahmed Al-Eryani" class="avatar">
+        <div class="s1-presenter-info">
+          <span class="name">Ahmed Al-Eryani</span>
+          <canvas id="qr-linkedin-mini" width="110" height="110"></canvas>
+          <a href="https://www.linkedin.com/in/ahmed-aleryani" target="_blank">LinkedIn</a>
+        </div>
+      </div>
+      <div class="s1-meta stagger-5">
+        <span class="tag">Vibe Code Atelier #4</span>
+        <span class="dim">LIFT99 Tallinn &middot; March 5, 2026</span>
+      </div>
+    </div>
+  </div>
+
+  <!-- SLIDE 2 — The Problem -->
+  <div class="slide" data-slide="2">
+    <div class="s2-layout">
+      <h2 class="stagger-1">Claude Code ships code.<br><span class="accent">Not pixels.</span></h2>
+      <div class="pain-grid">
+        <div class="pain-card stagger-2">
+          <img src="assets/icon-no-eyes.png" class="pain-icon-img" alt="No Eyes">
+          <h3>No Eyes</h3>
+          <p>Claude Code can reason, refactor, and ship features. But ask it to generate an image or understand a screenshot? It's completely blind.</p>
+        </div>
+        <div class="pain-card stagger-3">
+          <img src="assets/icon-context-switch.png" class="pain-icon-img" alt="Context Switching">
+          <h3>Context Switching</h3>
+          <p>Need a visual? Leave your terminal, open nano banana, craft a prompt, download the result, drag it back. Every. Single. Time.</p>
+        </div>
+        <div class="pain-card stagger-4">
+          <img src="assets/icon-no-feedback.png" class="pain-icon-img" alt="No Visual Feedback">
+          <h3>No Visual Feedback</h3>
+          <p>Your AI writes CSS it can't see rendered. Generates layouts with no visual check. No color extraction, no OCR, no image analysis.</p>
+        </div>
+      </div>
+    </div>
+  </div>
+
+  <!-- SLIDE 3 — What is MCP? -->
+  <div class="slide" data-slide="3">
+    <div class="s3-layout">
+      <h2 class="stagger-1">What is <span class="accent">MCP</span>?</h2>
+      <p class="subtitle stagger-2">Model Context Protocol — <em>a USB-C port for AI capabilities</em></p>
+      <div class="mcp-flow stagger-3">
+        <div class="mcp-clients">
+          <div class="mcp-client">Claude Code</div>
+          <div class="mcp-client">Cursor</div>
+          <div class="mcp-client">VS Code</div>
+          <div class="mcp-client">Windsurf</div>
+          <div class="mcp-client">Kiro</div>
+          <div class="mcp-client">Claude Desktop</div>
+        </div>
+        <div class="mcp-arrow">→</div>
+        <div class="mcp-hub">MCP Protocol</div>
+        <div class="mcp-arrow">→</div>
+        <div class="mcp-tools">&#128295; Tools</div>
+      </div>
+      <p class="body stagger-4" style="margin-bottom:2.5vh">One server. Any client. <span class="accent">Plug in once, work everywhere.</span></p>
+      <div class="clients-grid stagger-5">
+        <span class="client-badge">Claude Code</span>
+        <span class="client-badge">Cursor</span>
+        <span class="client-badge">VS Code</span>
+        <span class="client-badge">Windsurf</span>
+        <span class="client-badge">Kiro</span>
+        <span class="client-badge">Claude Desktop</span>
+      </div>
+    </div>
+  </div>
+
+  <!-- SLIDE 4 — PixelForge -->
+  <div class="slide" data-slide="4">
+    <div class="s4-layout">
+      <h2 class="stagger-1">PixelForge = <span class="accent">AI Eyes</span> + <span class="accent-pink">Hands</span></h2>
+      <div class="s4-columns">
+        <div class="stagger-left">
+          <h3 style="margin-bottom:1.5rem;color:var(--fg2)">5 Tools</h3>
+          <ul class="tools-list">
+            <li><span class="tool-name">generate_image</span><span class="tool-desc">Text → image, 14 aspect ratios</span></li>
+            <li><span class="tool-name">edit_image</span><span class="tool-desc">Modify images with prompts</span></li>
+            <li><span class="tool-name">analyze_image</span><span class="tool-desc">AI vision + custom prompts</span></li>
+            <li><span class="tool-name">list_models</span><span class="tool-desc">Model capabilities guide</span></li>
+            <li><span class="tool-name">get_server_info</span><span class="tool-desc">Config &amp; status check</span></li>
+          </ul>
+        </div>
+        <div class="model-table stagger-right">
+          <h3 style="margin-bottom:1.5rem;color:var(--fg2)">3 Models</h3>
+          <table>
+            <thead><tr><th>Model</th><th>Best For</th><th>Ratios</th></tr></thead>
+            <tbody>
+              <tr><td class="model-name">2.5-flash</td><td>Speed, low cost</td><td>10 standard</td></tr>
+              <tr><td class="model-name">3.1-flash</td><td>Panoramic, grounding</td><td>14 + panoramic</td></tr>
+              <tr><td class="model-name">3-pro</td><td>Text fidelity (~94%)</td><td>10 standard</td></tr>
+            </tbody>
+          </table>
+        </div>
+      </div>
+      <div class="install-cmd stagger-4">
+        <code>pipx install pixelforge-mcp</code>
+      </div>
+    </div>
+  </div>
+
+  <!-- SLIDE 5 — Demo Time (FULL RETRO + Claude Code terminal) -->
+  <div class="slide" data-slide="5">
+    <div class="forge-sparks" id="sparks"></div>
+    <div class="s5-layout">
+      <h2 class="stagger-1">Let's forge some pixels.</h2>
+      <div class="s5-terminal stagger-2">
+        <div class="s5-terminal-bar">
+          <span class="s5-terminal-dot"></span>
+          <span class="s5-terminal-dot"></span>
+          <span class="s5-terminal-dot"></span>
+          <span class="s5-terminal-title">claude code</span>
+        </div>
+        <p class="terminal-line" style="margin-top:1.5rem">
+          <span class="prompt">$</span> <span class="cmd">claude</span> <span class="cursor"></span>
+        </p>
+      </div>
+    </div>
+  </div>
+
+  <!-- SLIDE 6 — Thank You -->
+  <div class="slide" data-slide="6">
+    <div class="s6-layout">
+      <h2 class="game-over stagger-1">GAME OVER</h2>
+      <p class="closing stagger-2">Five tools. Three models. <span class="accent">One pip install.</span></p>
+      <p class="closing stagger-3" style="margin-top:0.5vh">Questions?</p>
+      <div class="s6-qr-row stagger-4">
+        <div class="s6-qr-item">
+          <span class="qr-label">Install</span>
+          <canvas id="qr-pypi" width="180" height="180"></canvas>
+          <a href="https://pypi.org/project/pixelforge-mcp/" target="_blank">pypi.org/project/pixelforge-mcp</a>
+        </div>
+        <div class="s6-qr-item">
+          <span class="qr-label">Connect</span>
+          <canvas id="qr-linkedin" width="180" height="180"></canvas>
+          <a href="https://www.linkedin.com/in/ahmed-aleryani" target="_blank">linkedin.com/in/ahmed-aleryani</a>
+        </div>
+      </div>
+      <div class="s6-install stagger-5">
+        <code>pipx install pixelforge-mcp</code>
+      </div>
+      <div class="s6-social stagger-5">
+        <span>Ahmed Al-Eryani</span>
+        <span>&middot;</span>
+        <span>LIFT99 Tallinn</span>
+        <span>&middot;</span>
+        <span>Vibe Code Atelier #4</span>
+      </div>
+    </div>
+  </div>
+
+</div>
+
+<script>
+// ── Floating Pixel Particles (retro square pixels) ──
+(function(){
+  const canvas = document.getElementById('pixel-canvas');
+  const ctx = canvas.getContext('2d');
+  let W, H;
+  const COLORS = ['#00E5E0','#00E5E0','#00CED1','#C71585','#FF1493','#1E90FF','#00FF80','#EE82EE','#FFD700'];
+  const particles = [];
+  const COUNT = 70;
+
+  function resize(){ W = canvas.width = window.innerWidth; H = canvas.height = window.innerHeight; }
+  window.addEventListener('resize', resize);
+  resize();
+
+  class Pixel {
+    constructor(){ this.reset(); }
+    reset(){
+      this.x = Math.random() * W;
+      this.y = Math.random() * H;
+      this.size = Math.floor(2 + Math.random() * 4);
+      this.color = COLORS[Math.floor(Math.random() * COLORS.length)];
+      this.vx = (Math.random() - 0.5) * 0.3;
+      this.vy = -0.15 - Math.random() * 0.4;
+      this.alpha = 0.08 + Math.random() * 0.3;
+      this.life = 0;
+      this.maxLife = 350 + Math.random() * 400;
+      this.pulseSpeed = 0.02 + Math.random() * 0.03;
+      this.pulseOffset = Math.random() * Math.PI * 2;
+    }
+    update(){
+      this.x += this.vx; this.y += this.vy; this.life++;
+      if(this.life > this.maxLife || this.y < -20 || this.x < -20 || this.x > W + 20) this.reset();
+    }
+    draw(){
+      const pulse = Math.sin(this.life * this.pulseSpeed + this.pulseOffset) * 0.5 + 0.5;
+      const a = this.alpha * (0.5 + pulse * 0.5);
+      const fadeIn = Math.min(this.life / 30, 1);
+      const fadeOut = Math.max(0, 1 - (this.life - this.maxLife + 60) / 60);
+      const finalA = a * fadeIn * fadeOut;
+      const px = Math.floor(this.x), py = Math.floor(this.y);
+      ctx.globalAlpha = finalA;
+      ctx.fillStyle = this.color;
+      ctx.fillRect(px, py, this.size, this.size);
+      ctx.globalAlpha = finalA * 0.12;
+      ctx.fillRect(px - 3, py - 3, this.size + 6, this.size + 6);
+    }
+  }
+
+  for(let i = 0; i < COUNT; i++){
+    const p = new Pixel();
+    p.life = Math.random() * p.maxLife;
+    particles.push(p);
+  }
+
+  // ── Click Burst Particles ──
+  const burstParticles = [];
+
+  class BurstPixel {
+    constructor(x, y){
+      this.x = x; this.y = y;
+      const angle = Math.random() * Math.PI * 2;
+      const speed = 2 + Math.random() * 6;
+      this.vx = Math.cos(angle) * speed;
+      this.vy = Math.sin(angle) * speed;
+      this.size = 2 + Math.floor(Math.random() * 5);
+      this.color = COLORS[Math.floor(Math.random() * COLORS.length)];
+      this.alpha = 0.8 + Math.random() * 0.2;
+      this.life = 0;
+      this.maxLife = 30 + Math.random() * 40;
+      this.drag = 0.94 + Math.random() * 0.03;
+      this.gravity = 0.08 + Math.random() * 0.06;
+      this.spin = (Math.random() - 0.5) * 0.2;
+      this.angle = 0;
+      this.dead = false;
+    }
+    update(){
+      this.vx *= this.drag;
+      this.vy *= this.drag;
+      this.vy += this.gravity;
+      this.x += this.vx;
+      this.y += this.vy;
+      this.angle += this.spin;
+      this.life++;
+      if(this.life > this.maxLife) this.dead = true;
+    }
+    draw(){
+      const fade = Math.max(0, 1 - this.life / this.maxLife);
+      const a = this.alpha * fade;
+      if(a <= 0) return;
+      ctx.save();
+      ctx.translate(this.x, this.y);
+      ctx.rotate(this.angle);
+      ctx.globalAlpha = a;
+      ctx.fillStyle = this.color;
+      ctx.shadowColor = this.color;
+      ctx.shadowBlur = 10;
+      ctx.fillRect(-this.size / 2, -this.size / 2, this.size, this.size);
+      ctx.shadowBlur = 0;
+      ctx.globalAlpha = a * 0.4;
+      const core = this.size * 0.5;
+      ctx.fillRect(-core / 2, -core / 2, core, core);
+      ctx.restore();
+    }
+  }
+
+  function spawnBurst(x, y){
+    const count = 15 + Math.floor(Math.random() * 15);
+    for(let i = 0; i < count; i++) burstParticles.push(new BurstPixel(x, y));
+  }
+
+  // ── Retro 8-bit Hammer Sound ──
+  let audioCtx;
+  function playHammerBam(){
+    if(!audioCtx) audioCtx = new (window.AudioContext || window.webkitAudioContext)();
+    const t = audioCtx.currentTime;
+    // Square wave hit — classic 8-bit impact
+    const osc = audioCtx.createOscillator();
+    osc.type = 'square';
+    osc.frequency.setValueAtTime(220, t);
+    osc.frequency.exponentialRampToValueAtTime(55, t + 0.12);
+    // Noise burst via short buffer for metallic texture
+    const bufLen = audioCtx.sampleRate * 0.06;
+    const noiseBuf = audioCtx.createBuffer(1, bufLen, audioCtx.sampleRate);
+    const data = noiseBuf.getChannelData(0);
+    for(let i = 0; i < bufLen; i++) data[i] = (Math.random() * 2 - 1) * 0.4;
+    const noise = audioCtx.createBufferSource();
+    noise.buffer = noiseBuf;
+    // Gain envelopes
+    const oscGain = audioCtx.createGain();
+    oscGain.gain.setValueAtTime(0.25, t);
+    oscGain.gain.exponentialRampToValueAtTime(0.001, t + 0.15);
+    const noiseGain = audioCtx.createGain();
+    noiseGain.gain.setValueAtTime(0.18, t);
+    noiseGain.gain.exponentialRampToValueAtTime(0.001, t + 0.08);
+    osc.connect(oscGain); oscGain.connect(audioCtx.destination);
+    noise.connect(noiseGain); noiseGain.connect(audioCtx.destination);
+    osc.start(t); osc.stop(t + 0.15);
+    noise.start(t); noise.stop(t + 0.08);
+  }
+
+  // ── Hammer Strike Element ──
+  const hammer = document.createElement('div');
+  hammer.className = 'hammer-cursor';
+  document.body.appendChild(hammer);
+
+  document.addEventListener('mousedown', function(e){
+    playHammerBam();
+    spawnBurst(e.clientX, e.clientY);
+    hammer.classList.remove('striking');
+    hammer.style.left = (e.clientX - 6) + 'px';
+    hammer.style.top = (e.clientY - 26) + 'px';
+    void hammer.offsetWidth;
+    hammer.classList.add('striking');
+    document.documentElement.classList.add('cursor-hidden');
+    setTimeout(function(){
+      hammer.classList.remove('striking');
+      document.documentElement.classList.remove('cursor-hidden');
+    }, 250);
+  });
+
+  function animate(){
+    ctx.clearRect(0, 0, W, H);
+    ctx.globalAlpha = 1;
+    for(const p of particles){ p.update(); p.draw(); }
+    // Update & draw burst particles, remove dead ones
+    for(let i = burstParticles.length - 1; i >= 0; i--){
+      burstParticles[i].update();
+      burstParticles[i].draw();
+      if(burstParticles[i].dead) burstParticles.splice(i, 1);
+    }
+    ctx.globalAlpha = 1;
+    requestAnimationFrame(animate);
+  }
+  animate();
+})();
+
+// ── Hero Image Particle Emitter — pixels forging across the whole page ──
+(function(){
+  const canvas = document.getElementById('hero-particles');
+  if(!canvas) return;
+  const ctx = canvas.getContext('2d');
+
+  const COLORS = [
+    '#00E5E0','#00CED1','#C71585','#FF1493','#1E90FF',
+    '#00FF80','#EE82EE','#FFD700','#f97316','#fbbf24',
+    '#7B68EE','#00E5E080','#FF149360'
+  ];
+  const particles = [];
+  const MAX = 150;
+  let cW, cH, imgRect;
+
+  function resize(){
+    cW = canvas.width = window.innerWidth;
+    cH = canvas.height = window.innerHeight;
+    const img = document.querySelector('.s1-hero-wrap .hero-img');
+    if(img){
+      const ir = img.getBoundingClientRect();
+      imgRect = { x: ir.left, y: ir.top, w: ir.width, h: ir.height };
+    }
+  }
+
+  class ForgePixel {
+    constructor(){ this.reset(); }
+    reset(){
+      if(!imgRect){ this.life = 999; return; }
+      const ix = imgRect.x, iy = imgRect.y, iw = imgRect.w, ih = imgRect.h;
+      const cx = ix + iw / 2, cy = iy + ih / 2;
+
+      // Spawn on a random edge of the image
+      const edge = Math.floor(Math.random() * 4);
+      switch(edge){
+        case 0: this.x = ix + Math.random() * iw; this.y = iy; break;
+        case 1: this.x = ix + iw; this.y = iy + Math.random() * ih; break;
+        case 2: this.x = ix + Math.random() * iw; this.y = iy + ih; break;
+        case 3: this.x = ix; this.y = iy + Math.random() * ih; break;
+      }
+
+      // Radial direction outward from image center + randomness
+      const angle = Math.atan2(this.y - cy, this.x - cx) + (Math.random() - 0.5) * 0.8;
+      const speed = 1.2 + Math.random() * 3.5;
+      this.vx = Math.cos(angle) * speed;
+      this.vy = Math.sin(angle) * speed;
+
+      this.size = 2 + Math.floor(Math.random() * 5);
+      this.color = COLORS[Math.floor(Math.random() * COLORS.length)];
+      this.alpha = 0.5 + Math.random() * 0.5;
+      this.life = 0;
+      this.maxLife = 120 + Math.random() * 180;
+      this.drag = 0.990 + Math.random() * 0.008;
+      this.gravity = (Math.random() - 0.5) * 0.015;
+      this.spin = (Math.random() - 0.5) * 0.06;
+      this.angle = 0;
+    }
+    update(){
+      this.vx *= this.drag;
+      this.vy *= this.drag;
+      this.vy += this.gravity;
+      this.x += this.vx;
+      this.y += this.vy;
+      this.angle += this.spin;
+      this.life++;
+      if(this.life > this.maxLife) this.reset();
+    }
+    draw(){
+      const fadeIn = Math.min(this.life / 10, 1);
+      const fadeOut = Math.max(0, 1 - (this.life - this.maxLife + 40) / 40);
+      const a = this.alpha * fadeIn * fadeOut;
+      if(a <= 0) return;
+      ctx.save();
+      ctx.translate(this.x, this.y);
+      ctx.rotate(this.angle);
+      ctx.globalAlpha = a;
+      ctx.fillStyle = this.color;
+      ctx.shadowColor = this.color;
+      ctx.shadowBlur = 10;
+      ctx.fillRect(-this.size / 2, -this.size / 2, this.size, this.size);
+      ctx.shadowBlur = 0;
+      ctx.globalAlpha = a * 0.5;
+      const core = this.size * 0.5;
+      ctx.fillRect(-core / 2, -core / 2, core, core);
+      ctx.restore();
+    }
+  }
+
+  resize();
+  window.addEventListener('resize', resize);
+
+  for(let i = 0; i < MAX; i++){
+    const p = new ForgePixel();
+    p.life = Math.random() * (p.maxLife || 200);
+    particles.push(p);
+  }
+
+  function animate(){
+    ctx.clearRect(0, 0, cW, cH);
+    const slide1 = document.querySelector('[data-slide="1"]');
+    if(slide1 && slide1.classList.contains('active')){
+      for(const p of particles){ p.update(); p.draw(); }
+    }
+    ctx.globalAlpha = 1;
+    requestAnimationFrame(animate);
+  }
+
+  requestAnimationFrame(() => { resize(); animate(); });
+})();
+
+// ── Slide Navigation ──
+const slides = document.querySelectorAll('.slide');
+const counter = document.getElementById('counter');
+const progress = document.getElementById('progress');
+let current = 0;
+
+function goTo(n){
+  if(n < 0 || n >= slides.length) return;
+  current = n;
+  slides.forEach((s, i) => {
+    s.classList.remove('active', 'prev');
+    if(i === current) s.classList.add('active');
+    else if(i < current) s.classList.add('prev');
+  });
+  counter.textContent = `${current + 1} / ${slides.length}`;
+  progress.style.width = `${((current + 1) / slides.length) * 100}%`;
+}
+
+document.addEventListener('keydown', e => {
+  if(e.key === 'ArrowRight' || e.key === ' '){ e.preventDefault(); goTo(current + 1); }
+  if(e.key === 'ArrowLeft'){ e.preventDefault(); goTo(current - 1); }
+  if(e.key === 'Home') goTo(0);
+  if(e.key === 'End') goTo(slides.length - 1);
+});
+
+let touchStartX = 0;
+document.addEventListener('touchstart', e => { touchStartX = e.touches[0].clientX; });
+document.addEventListener('touchend', e => {
+  const dx = e.changedTouches[0].clientX - touchStartX;
+  if(Math.abs(dx) > 50) dx > 0 ? goTo(current - 1) : goTo(current + 1);
+});
+
+// Hide deck UI until loading completes
+document.getElementById('progress').style.display = 'none';
+document.getElementById('counter').style.display = 'none';
+document.getElementById('controls').style.display = 'none';
+
+const deckObserver = new MutationObserver(() => {
+  const ls = document.getElementById('loadingScreen');
+  if(ls && ls.classList.contains('hidden')){
+    document.getElementById('progress').style.display = '';
+    document.getElementById('counter').style.display = '';
+    document.getElementById('controls').style.display = '';
+    deckObserver.disconnect();
+  }
+});
+deckObserver.observe(document.getElementById('loadingScreen'), {attributes:true});
+
+goTo(0);
+
+// ── Forge Sparks on Slide 5 ──
+const sparksEl = document.getElementById('sparks');
+const sparkColors = ['#d97706','#f59e0b','#fbbf24','#d97706','#b45309','#f97316'];
+for(let i = 0; i < 45; i++){
+  const s = document.createElement('div');
+  s.className = 'spark';
+  s.style.left = `${42 + Math.random() * 16}%`;
+  s.style.top = `${38 + Math.random() * 14}%`;
+  s.style.setProperty('--dx', `${(Math.random() - 0.5) * 300}px`);
+  s.style.setProperty('--dy', `${-60 - Math.random() * 200}px`);
+  s.style.animationDelay = `${Math.random() * 2}s`;
+  s.style.animationDuration = `${1.2 + Math.random() * 1.5}s`;
+  s.style.background = sparkColors[Math.floor(Math.random() * sparkColors.length)];
+  s.style.boxShadow = `0 0 6px ${s.style.background}`;
+  const sz = 3 + Math.random() * 3;
+  s.style.width = `${sz}px`; s.style.height = `${sz}px`;
+  sparksEl.appendChild(s);
+}
+
+// ── Fullscreen ──
+function toggleFullscreen(){
+  if(!document.fullscreenElement) document.documentElement.requestFullscreen().catch(()=>{});
+  else document.exitFullscreen();
+}
+document.addEventListener('keydown', e => { if(e.key === 'f' || e.key === 'F') toggleFullscreen(); });
+
+// ── QR Code renderer ──
+function drawQR(canvasId, matrix){
+  const canvas = document.getElementById(canvasId);
+  if(!canvas) return;
+  const ctx = canvas.getContext('2d');
+  const size = canvas.width;
+  const n = matrix.length;
+  const cell = Math.floor(size / n);
+  const off = Math.floor((size - cell * n) / 2);
+  ctx.fillStyle = '#ffffff';
+  ctx.fillRect(0, 0, size, size);
+  ctx.fillStyle = '#0a0e14';
+  for(let r = 0; r < n; r++)
+    for(let c = 0; c < n; c++)
+      if(matrix[r][c]) ctx.fillRect(off + c * cell, off + r * cell, cell, cell);
+}
+
+// PyPI QR
+drawQR('qr-pypi', [
+  [1,1,1,1,1,1,1,0,1,1,1,0,1,0,1,1,1,0,1,0,0,0,1,1,1,1,1,1,1],
+  [1,0,0,0,0,0,1,0,1,1,1,0,0,1,0,0,1,1,1,1,0,0,1,0,0,0,0,0,1],
+  [1,0,1,1,1,0,1,0,1,0,1,1,0,0,1,1,0,1,1,0,1,0,1,0,1,1,1,0,1],
+  [1,0,1,1,1,0,1,0,1,1,0,1,0,1,1,0,1,0,1,0,0,0,1,0,1,1,1,0,1],
+  [1,0,1,1,1,0,1,0,0,0,0,0,0,1,1,1,0,0,0,0,0,0,1,0,1,1,1,0,1],
+  [1,0,0,0,0,0,1,0,1,0,0,1,1,0,1,0,1,0,0,1,1,0,1,0,0,0,0,0,1],
+  [1,1,1,1,1,1,1,0,1,0,1,0,1,0,1,0,1,0,1,0,1,0,1,1,1,1,1,1,1],
+  [0,0,0,0,0,0,0,0,0,1,0,0,1,0,1,1,0,1,0,1,0,0,0,0,0,0,0,0,0],
+  [1,1,0,0,1,1,1,0,0,0,0,1,0,0,0,0,0,1,1,0,1,0,0,1,0,1,1,1,1],
+  [1,1,1,1,1,0,0,1,1,1,1,0,1,1,0,1,1,1,1,0,0,0,1,0,1,1,1,1,1],
+  [1,0,0,1,0,1,1,0,0,0,0,1,1,0,0,1,0,0,1,0,1,0,0,0,0,0,0,0,1],
+  [1,1,0,0,0,1,0,1,1,0,1,1,0,0,0,0,0,1,1,1,1,1,0,1,1,1,0,1,1],
+  [0,0,0,1,1,1,1,0,1,0,1,0,1,0,1,0,0,1,0,0,1,1,0,0,0,0,0,1,0],
+  [1,1,0,0,1,1,0,1,0,1,0,0,0,0,1,1,1,0,0,0,0,0,1,1,1,1,1,1,1],
+  [0,1,0,0,0,0,1,1,1,1,1,0,0,1,1,1,1,1,0,0,0,0,0,1,0,1,1,0,1],
+  [1,1,0,1,1,0,0,0,0,1,0,0,1,0,1,0,1,1,0,1,0,0,0,1,0,0,0,1,1],
+  [0,0,0,1,1,1,1,0,0,1,0,1,0,1,1,0,1,1,0,1,0,1,0,1,0,0,0,1,0],
+  [1,0,1,1,0,0,0,1,0,1,1,0,1,0,1,1,1,1,1,0,0,1,1,1,1,1,0,1,1],
+  [0,0,0,1,1,1,1,0,0,0,0,1,1,1,1,1,0,1,0,0,0,1,1,0,0,0,1,0,1],
+  [0,0,1,1,1,0,0,0,1,1,0,1,0,1,0,0,0,1,1,0,0,1,0,1,1,0,0,1,1],
+  [1,1,0,0,1,0,1,1,0,0,0,0,1,1,0,1,0,1,0,1,1,1,1,1,1,1,0,0,1],
+  [0,0,0,0,0,0,0,0,1,0,1,0,0,1,1,1,1,1,0,0,1,0,0,0,1,0,0,0,1],
+  [1,1,1,1,1,1,1,0,0,0,1,0,0,0,0,1,1,1,0,1,1,0,1,0,1,1,1,0,1],
+  [1,0,0,0,0,0,1,0,1,0,1,0,1,0,1,0,0,1,0,1,1,0,0,0,1,0,0,1,1],
+  [1,0,1,1,1,0,1,0,1,1,0,1,0,1,1,0,0,1,0,1,1,1,1,1,1,1,0,0,1],
+  [1,0,1,1,1,0,1,0,0,0,0,0,1,0,0,1,1,0,1,0,0,1,0,1,0,0,0,0,1],
+  [1,0,1,1,1,0,1,0,0,1,0,1,1,1,1,1,1,1,1,1,1,1,0,0,0,1,1,1,1],
+  [1,0,0,0,0,0,1,0,1,1,0,1,0,1,0,1,0,1,1,0,1,0,1,1,0,1,0,1,1],
+  [1,1,1,1,1,1,1,0,1,1,1,0,1,1,0,1,0,1,0,1,1,1,1,0,1,0,0,1,0]
+]);
+
+// LinkedIn QR
+const linkedinMatrix = [
+  [1,1,1,1,1,1,1,0,0,1,0,0,1,0,1,1,0,1,1,1,0,0,1,1,1,1,1,1,1],
+  [1,0,0,0,0,0,1,0,0,0,1,1,1,1,1,1,0,0,1,1,1,0,1,0,0,0,0,0,1],
+  [1,0,1,1,1,0,1,0,1,1,1,0,1,0,0,0,0,0,0,1,1,0,1,0,1,1,1,0,1],
+  [1,0,1,1,1,0,1,0,0,1,1,1,0,0,1,0,0,0,1,1,0,0,1,0,1,1,1,0,1],
+  [1,0,1,1,1,0,1,0,0,0,1,0,0,0,0,1,0,1,1,1,0,0,1,0,1,1,1,0,1],
+  [1,0,0,0,0,0,1,0,0,1,0,0,0,0,0,1,1,1,1,1,0,0,1,0,0,0,0,0,1],
+  [1,1,1,1,1,1,1,0,1,0,1,0,1,0,1,0,1,0,1,0,1,0,1,1,1,1,1,1,1],
+  [0,0,0,0,0,0,0,0,1,1,1,0,1,1,0,1,0,1,1,0,1,0,0,0,0,0,0,0,0],
+  [1,1,1,0,1,1,1,1,1,0,1,1,0,1,0,0,1,1,1,1,1,1,1,0,0,0,1,0,0],
+  [1,1,0,0,1,1,0,1,1,0,1,1,0,0,1,0,1,0,0,0,0,1,1,0,0,1,0,0,1],
+  [1,1,0,1,1,0,1,0,0,1,0,0,0,0,1,0,0,1,0,0,1,1,0,0,0,0,1,1,1],
+  [1,1,0,0,0,1,0,0,1,0,0,1,0,1,1,1,1,1,1,0,1,1,0,0,1,0,0,1,0],
+  [0,1,0,0,0,0,1,1,1,0,0,0,1,1,0,1,1,1,0,1,1,1,1,0,0,1,0,1,1],
+  [0,0,0,1,0,1,0,0,1,1,0,1,1,1,0,0,0,0,0,0,1,1,1,1,0,1,0,0,1],
+  [1,1,0,1,1,0,1,1,0,1,0,1,1,0,1,0,1,0,1,0,0,0,0,1,0,1,0,1,1],
+  [0,0,1,1,0,0,0,1,0,1,1,0,1,1,1,1,1,1,1,1,0,0,0,0,0,1,0,1,0],
+  [1,1,0,0,0,0,1,1,1,0,0,1,0,1,0,0,1,1,0,1,1,1,1,1,0,1,0,1,1],
+  [0,0,1,1,1,1,0,0,0,1,0,1,0,0,0,0,1,0,0,0,1,1,1,0,0,1,1,0,1],
+  [1,0,0,1,1,1,1,0,0,1,0,0,0,1,0,0,0,1,0,0,1,1,0,1,0,0,0,1,1],
+  [0,1,0,1,0,1,0,1,0,0,1,1,0,1,0,1,1,1,0,1,1,1,1,0,0,1,0,1,0],
+  [1,0,0,1,1,0,1,0,1,1,0,0,1,1,0,0,1,1,1,0,1,1,1,1,1,0,0,0,0],
+  [0,0,0,0,0,0,0,0,1,1,0,1,1,0,0,0,1,0,0,1,1,0,0,0,1,0,1,1,1],
+  [1,1,1,1,1,1,1,0,1,0,1,1,1,0,1,0,0,1,0,1,1,0,1,0,1,1,0,1,1],
+  [1,0,0,0,0,0,1,0,1,1,0,0,1,1,1,1,1,1,1,0,1,0,0,0,1,1,0,1,1],
+  [1,0,1,1,1,0,1,0,1,0,1,1,0,0,1,1,1,1,0,0,1,1,1,1,1,0,0,0,0],
+  [1,0,1,1,1,0,1,0,0,1,0,1,0,0,0,0,1,1,0,0,0,0,0,0,1,0,1,1,1],
+  [1,0,1,1,1,0,1,0,1,0,1,0,0,1,0,0,1,0,1,1,1,0,0,1,1,1,0,0,1],
+  [1,0,0,0,0,0,1,0,1,1,0,1,0,0,0,1,0,1,1,1,1,1,1,0,1,0,0,1,0],
+  [1,1,1,1,1,1,1,0,1,0,0,0,1,0,0,1,1,1,0,1,1,1,0,1,1,1,0,1,1]
+];
+drawQR('qr-linkedin', linkedinMatrix);
+drawQR('qr-linkedin-mini', linkedinMatrix);
+
+// ── Background Music ──
+const bgm = document.getElementById('bgm');
+bgm.volume = 0.3;
+let musicPlaying = false;
+let musicMuted = false; // user explicitly muted
+
+function updateMusicUI(){
+  document.getElementById('musicOn').style.display = musicPlaying && !musicMuted ? '' : 'none';
+  document.getElementById('musicOff').style.display = musicPlaying && !musicMuted ? 'none' : '';
+}
+
+function startMusicIfAllowed(){
+  if(musicMuted) return;
+  bgm.play().then(() => { musicPlaying = true; updateMusicUI(); }).catch(() => {});
+}
+
+function toggleMusic(){
+  if(musicPlaying){
+    bgm.pause();
+    musicPlaying = false;
+    musicMuted = true;
+  } else {
+    musicMuted = false;
+    bgm.play().then(() => { musicPlaying = true; }).catch(() => {});
+  }
+  updateMusicUI();
+}
+
+// M key to toggle music, R key to restart song
+document.addEventListener('keydown', e => {
+  if(e.key === 'm' || e.key === 'M') toggleMusic();
+  if(e.key === 'r' || e.key === 'R'){ bgm.currentTime = 0; if(!musicPlaying) startMusicIfAllowed(); }
+});
+
+// Music starts when user clicks "Press Start" — no autoplay issues
+
+// ── Loading Sequence ──
+const loadingItems = [
+  'Connecting to MCP server...',
+  'Loading Gemini models...',
+  'Calibrating pixel forge...',
+  'Initializing generate_image...',
+  'Initializing edit_image...',
+  'Initializing analyze_image...',
+  'Warming up 14 aspect ratios...',
+  'Loading panoramic support...',
+  'Syncing with Claude Code...',
+  'Forging pixels...',
+  'Ready.'
+];
+
+let presentationStarted = false;
+function beginPresentation(){
+  if(presentationStarted) return;
+  presentationStarted = true;
+
+  // Start music immediately on user click — browser allows this
+  musicMuted = false;
+  bgm.currentTime = 0;
+  startMusicIfAllowed();
+
+  // Hide start screen, show loading
+  document.getElementById('startScreen').classList.add('hidden');
+  const loadScreen = document.getElementById('loadingScreen');
+  const fill = document.getElementById('loadingFill');
+  const pct = document.getElementById('loadingPercent');
+  const items = document.getElementById('loadingItems');
+  loadScreen.classList.add('active');
+
+  let step = 0;
+  const totalSteps = loadingItems.length;
+  const stepTime = 3500 / totalSteps; // ~3.5s total
+
+  function nextStep(){
+    if(step >= totalSteps){
+      // Done — transition to slides
+      setTimeout(() => {
+        loadScreen.classList.add('hidden');
+        setTimeout(() => { loadScreen.style.display = 'none'; }, 800);
+      }, 400);
+      return;
+    }
+    const progress = Math.round(((step + 1) / totalSteps) * 100);
+    fill.style.width = progress + '%';
+    pct.textContent = progress + '%';
+    items.textContent = loadingItems[step];
+    step++;
+    setTimeout(nextStep, stepTime + Math.random() * 150);
+  }
+  setTimeout(nextStep, 300);
+}
+</script>
+</body>
+</html>
