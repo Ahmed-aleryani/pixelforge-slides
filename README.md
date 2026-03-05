@@ -14,19 +14,21 @@ This 8-minute talk covers the problem, the MCP protocol, and a live demo of imag
 
 <p align="center">
   <img src="assets/ahmed.png" width="120" style="border-radius:50%;" alt="Ahmed Al-Eryani">
+  <br>
+  <strong>Ahmed Al-Eryani</strong>
 </p>
 
-<p align="center"><strong>Ahmed Al-Eryani</strong></p>
+### Connect
 
-<p align="center">
-  <a href="https://www.linkedin.com/in/ahmed-aleryani"><img src="assets/qr-linkedin.png" width="140" alt="LinkedIn QR"></a>
-  &nbsp;&nbsp;&nbsp;
-  <a href="https://pypi.org/project/pixelforge-mcp/"><img src="assets/qr-pypi.png" width="140" alt="PyPI QR"></a>
-</p>
+<a href="https://www.linkedin.com/in/ahmed-aleryani"><img src="assets/qr-linkedin.png" width="140" alt="LinkedIn QR"></a>
 
-<p align="center">
-  <a href="https://www.linkedin.com/in/ahmed-aleryani">LinkedIn</a> · <a href="https://pypi.org/project/pixelforge-mcp/">PyPI</a>
-</p>
+[linkedin.com/in/ahmed-aleryani](https://www.linkedin.com/in/ahmed-aleryani)
+
+### Install
+
+<a href="https://pypi.org/project/pixelforge-mcp/"><img src="assets/qr-pypi.png" width="140" alt="PyPI QR"></a>
+
+[pypi.org/project/pixelforge-mcp](https://pypi.org/project/pixelforge-mcp/)
 
 ## Event Details
 
@@ -34,10 +36,6 @@ This 8-minute talk covers the problem, the MCP protocol, and a live demo of imag
 - **Venue:** [LIFT99](https://www.lift99.co/tallinn-hub), Tallinn
 - **Date:** March 5, 2026
 
-## Install PixelForge MCP
+## Source
 
-```bash
-pipx install pixelforge-mcp
-```
-
-**[PyPI →](https://pypi.org/project/pixelforge-mcp/)** · **[GitHub →](https://github.com/Tehnolabs/pixelforge-mcp)**
+**[GitHub →](https://github.com/Tehnolabs/pixelforge-mcp)**
